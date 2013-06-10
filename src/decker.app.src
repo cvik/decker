@@ -1,0 +1,10 @@
+{application, decker,
+ [{description, "Erlang client for the Docker Remote API"},
+  {vsn, "0.1.0"},
+  {registered, []},
+  {applications, [kernel,
+                  stdlib,
+                  lhttpc]},
+  {mod, []},
+  {env, []}
+ ]}.
