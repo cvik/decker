@@ -12,10 +12,13 @@
 
 -export([list_images/1, create_image/1,
          insert_image_file/3, inspect_image/1,
-         image_history/1, push_image/2,
+         image_history/1, push_image/1, push_image/2,
          tag_image/2, remove_image/1, search_images/1]).
 
--export([build/2, get_auth/0, set_auth/3, info/0, version/0, commit/1]).
+-export([build/1, build/2,
+         get_auth/0, set_auth/3,
+         info/0, version/0,
+         commit/1]).
 
 -compile(native).
 
@@ -62,12 +65,13 @@ inspect_container(Id) ->
             Other
     end.
 
--spec container_changes(Id::id()) -> [#change{}] | error().
+-spec container_changes(Id::id()) -> [#container_change{}] | error().
 container_changes(Id) ->
     case call("/containers/"++Id++"/changes") of
         {ok, Json} ->
             {array, Changes} = mochijson:decode(Json),
-            [ #change{path=P, kind=K} || {struct, [{_,P},{_,K}]} <- Changes ];
+            [ #container_change{path=P, kind=K} ||
+              {struct, [{_,P},{_,K}]} <- Changes ];
         Other ->
             Other
     end.
@@ -157,7 +161,13 @@ remove_container(Id, RemoveVolumes) ->
 %% ----------------------------------------------------------------------------
 
 list_images(Opts) ->
-    call("/images/json", Opts).
+    case call("/images/json", Opts) of
+        {ok, Json} ->
+            {array, Images} = mochijson:decode(Json),
+            [ decker_data:parse_image_info(I) || I <- Images ];
+        Other ->
+            Other
+    end.
 
 create_image(Opts) ->
     call(post, "/images/create", Opts, "", 60000).
@@ -166,16 +176,30 @@ insert_image_file(Id, Url, Path) ->
     call(post, "/images/"++Id++"/insert", [{url,Url},{path,Path}], "", 60000).
 
 inspect_image(Id) ->
-    call("/images/"++Id++"/inspect").
+    case call("/images/"++Id++"/json") of
+        {ok, Json} ->
+            decker_data:parse_image(mochijson:decode(Json));
+        Other ->
+            Other
+    end.
 
 image_history(Id) ->
-    call("/images/"++Id++"/history").
+    case call("/images/"++Id++"/history") of
+        {ok, Json} ->
+            {array, Changes} = mochijson:decode(Json),
+            [ decker_data:parse_image_change(C) || C <- Changes ];
+        Other ->
+            Other
+    end.
+
+push_image(Id) ->
+    call(post, "/images/"++Id++"/push", [], "", 60000).
 
 push_image(Id, Registry) ->
     call(post, "/images/"++Id++"/push", [{registry, Registry}], "", 60000).
 
 tag_image(Id, Opts) ->
-    call(post, "/images/"++Id++"/insert", Opts, "", 60000).
+    call(post, "/images/"++Id++"/tag", Opts, "", 2*60000).
 
 remove_image(Id) ->
     call(delete, "/images/"++Id, [], "", 60000).
@@ -185,7 +209,10 @@ search_images(SearchTerm) ->
 
 %% ----------------------------------------------------------------------------
 
-%% TODO: Fix streaming result
+build(BuildCommands) ->
+    call(post, "/build", [], BuildCommands, 60000).
+
+%% TODO: Stream the result
 build(BuildCommands, Tag) ->
     call(post, "/build", [{t, Tag}], BuildCommands, 60000).
 
@@ -204,11 +231,18 @@ info() ->
     end.
 
 version() ->
-    call("/version").
+    case call("/version") of
+        {ok, Json} ->
+            decker_data:parse_version(mochijson:decode(Json));
+        Other ->
+            Other
+    end.
 
 commit(Opts) ->
     call(post, "/commit", Opts, "", 20000).
 
+%% ----------------------------------------------------------------------------
+%% Internal
 %% ----------------------------------------------------------------------------
 
 call(Path) ->

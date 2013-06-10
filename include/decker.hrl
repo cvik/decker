@@ -73,6 +73,15 @@
 
 -record(version, {version :: string(),
                   git_commit :: string(),
-                  go_version :: string()}).
+                  memory_limit :: boolean(),
+                  swap_limit :: boolean()}).
 
--record(change, {path :: string(), kind :: string()}).
+-record(container_change, {path :: string(), kind :: string()}).
+
+-record(image_change, {id :: string(),
+                       created :: timestamp(),
+                       created_by :: string()}).
+
+-record(auth_info, {user :: string(),
+                    password :: string(),
+                    email :: string()}).

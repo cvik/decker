@@ -3,9 +3,13 @@
 -export([container_config_to_json/1]).
 
 -export([parse_container_config/1, parse_container_info/1,
-         parse_container/1, parse_info/1]).
+         parse_container/1, parse_info/1, parse_version/1,
+         parse_image_info/1, parse_image/1,
+         parse_container_change/1, parse_image_change/1]).
 
 -include("decker.hrl").
+
+%% ----------------------------------------------------------------------------
 
 container_config_to_json(#container_config{} = Config) ->
     #container_config{hostname=Hostname,
@@ -43,6 +47,8 @@ container_config_to_json(#container_config{} = Config) ->
                                 {"Volumes", {struct,
                                              [ To || {_From, To} <- Volumes ]}},
                                 {"VolumesFrom", VolumesFrom}]}).
+
+%% ----------------------------------------------------------------------------
 
 parse_container_config({struct, Fields}) ->
     #container_config{hostname=prop("Hostname", Fields),
@@ -98,6 +104,19 @@ parse_container({struct, Fields}) ->
                resolv_conf_path=prop("ResolvConfPath", Fields),
                volumes=prop("Volumes", Fields)}.
 
+parse_image_info({struct, Fields}) ->
+    #image_info{repository=prop("Repository", Fields),
+                tag=prop("Tag", Fields),
+                id=prop("Id", Fields),
+                created=prop("Created", Fields)}.
+
+parse_image({struct, Fields}) ->
+    #image{id=prop("id", Fields),
+           parent=prop("parent", Fields),
+           created=prop("created", Fields),
+           container=prop("container", Fields),
+           config=parse_container_config(prop("container_config", Fields))}.
+
 parse_info({struct, Fields}) ->
     #info{containers=prop("Containers", Fields),
           images=prop("Images", Fields),
@@ -106,6 +125,23 @@ parse_info({struct, Fields}) ->
           num_goroutines=prop("NGoroutines", Fields),
           memory_limit=prop("MemoryLimit", Fields),
           swap_limit=prop("SwapLimit", Fields)}.
+
+parse_version({struct, Fields}) ->
+    #version{version=prop("Version", Fields),
+             git_commit=prop("GitCommit", Fields),
+             memory_limit=prop("MemoryLimit", Fields),
+             swap_limit=prop("SwapLimit", Fields)}.
+
+parse_container_change({struct, Fields}) ->
+    #container_change{path=prop("Path", Fields),
+                      kind=prop("Kind", Fields)}.
+
+parse_image_change({struct, Fields}) ->
+    #image_change{id=prop("Id", Fields),
+                  created=prop("Created", Fields),
+                  created_by=prop("CreatedBy", Fields)}.
+
+%% ----------------------------------------------------------------------------
 
 prop(Key, Lst) ->
     case lists:keyfind(Key, 1, Lst) of
