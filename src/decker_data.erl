@@ -5,7 +5,7 @@
 -export([parse_container_config/1, parse_container_info/1,
          parse_container/1, parse_info/1]).
 
--include("edocker.hrl").
+-include("decker.hrl").
 
 container_config_to_json(#container_config{} = Config) ->
     #container_config{hostname=Hostname,

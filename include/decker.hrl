@@ -66,7 +66,7 @@
 -record(info, {containers :: integer(),
                images :: integer(),
                debug :: boolean(),
-               num_fd :: integer(),
+               num_fds :: integer(),
                num_goroutines :: integer(),
                memory_limit :: boolean(),
                swap_limit :: boolean()}).
